@@ -149,11 +149,16 @@ WORDPRESS_APP_PASSWORD=xxxx xxxx   # Generate in WordPress (see below)
 5. Copy the password into your `.env.local`
 
 **Step 5: Run the app**
+
+**Option A: Double-click to launch (easiest)**
+- Double-click **"Launch News Brief.app"** in the project folder
+- It will start the server and open your browser automatically
+
+**Option B: Use Terminal**
 ```bash
 npm run dev
 ```
-
-Open [http://localhost:3000](http://localhost:3000)
+Then open [http://localhost:3000](http://localhost:3000)
 
 **Step 6: Log into paywalled sites (first time only)**
 1. Click **Site Logins** in the app

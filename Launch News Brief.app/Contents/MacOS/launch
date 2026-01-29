@@ -1,0 +1,33 @@
+#!/bin/bash
+
+# Get the directory where this app is located
+APP_DIR="$(dirname "$(dirname "$(dirname "$0")")")"
+PROJECT_DIR="$(dirname "$APP_DIR")"
+
+# Change to the project directory
+cd "$PROJECT_DIR"
+
+# Check if node_modules exists
+if [ ! -d "node_modules" ]; then
+    osascript -e 'display alert "Setup Required" message "Please run \"npm install\" in Terminal first. Open Terminal, drag the news-brief-generator folder in, and type: npm install"'
+    exit 1
+fi
+
+# Check if .env.local exists
+if [ ! -f ".env.local" ]; then
+    osascript -e 'display alert "Setup Required" message "Please create .env.local with your API keys first. See README for instructions."'
+    exit 1
+fi
+
+# Start the server and open browser
+npm run dev &
+SERVER_PID=$!
+
+# Wait for server to start
+sleep 3
+
+# Open in default browser
+open "http://localhost:3000"
+
+# Keep the script running so the server stays alive
+wait $SERVER_PID

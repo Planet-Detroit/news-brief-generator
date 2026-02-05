@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 interface PublishRequest {
   title: string;
   content: string;
-  excerpt?: string;
+  excerpt?: string; // This is used as the subtitle for Newspack
   status: 'draft' | 'publish';
   categories?: number[];
   tags?: number[];
@@ -53,16 +53,17 @@ export async function POST(request: NextRequest): Promise<NextResponse<PublishRe
       status,
     };
 
-    // Add excerpt/subtitle if provided
+    // Add subtitle if provided (Newspack uses this as the subtitle field)
     if (excerpt) {
-      postData.excerpt = excerpt;
-      // Also set subtitle meta fields used by various themes/plugins
+      // Set subtitle meta fields used by Newspack and other themes/plugins
       postData.meta = {
-        newspack_post_subtitle: excerpt,  // Newspack theme
+        newspack_post_subtitle: excerpt,  // Newspack theme - primary subtitle field
         _subtitle: excerpt,               // Developer theme
         wps_subtitle: excerpt,            // WP Subtitle plugin
         subtitle: excerpt,                // Generic
       };
+      // Note: We intentionally don't set postData.excerpt here to keep
+      // the WordPress excerpt separate from the subtitle
     }
 
     if (categories && categories.length > 0) {
@@ -107,6 +108,28 @@ export async function POST(request: NextRequest): Promise<NextResponse<PublishRe
     }
 
     const result = await response.json();
+
+    // If subtitle was provided, make a separate call to ensure Newspack subtitle is set
+    // (some WordPress setups require meta to be updated after post creation)
+    if (excerpt) {
+      try {
+        await fetch(`${apiUrl}/${result.id}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Basic ${authString}`,
+          },
+          body: JSON.stringify({
+            meta: {
+              newspack_post_subtitle: excerpt,
+            },
+          }),
+        });
+      } catch (metaError) {
+        // Log but don't fail if subtitle update fails
+        console.error('Failed to update Newspack subtitle:', metaError);
+      }
+    }
 
     return NextResponse.json({
       success: true,

@@ -1,20 +1,35 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { parseUrlList, isPaywalledSource, generateId } from '@/lib/utils/url-parser';
 import type { ArticleInput } from '@/types';
 
 interface UrlInputPanelProps {
   onSubmit: (articles: ArticleInput[]) => void;
   isProcessing: boolean;
+  initialUrls?: string[];
 }
 
 export default function UrlInputPanel({
   onSubmit,
   isProcessing,
+  initialUrls,
 }: UrlInputPanelProps) {
   const [urlInput, setUrlInput] = useState('');
   const [articles, setArticles] = useState<ArticleInput[]>([]);
+
+  // Pre-populate with URLs from curation panel
+  useEffect(() => {
+    if (initialUrls && initialUrls.length > 0) {
+      setUrlInput(initialUrls.join('\n'));
+      const newArticles: ArticleInput[] = initialUrls.map((url) => ({
+        id: generateId(),
+        url,
+        isPaywalled: isPaywalledSource(url),
+      }));
+      setArticles(newArticles);
+    }
+  }, [initialUrls]);
 
   const handleParseUrls = () => {
     const urls = parseUrlList(urlInput);

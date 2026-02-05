@@ -1,4 +1,4 @@
-import { load, type CheerioAPI } from 'cheerio';
+import * as cheerio from 'cheerio';
 import type { ExtractedContent } from '@/types';
 import { getSourceName } from '@/lib/utils/url-parser';
 import { normalizeSourceName } from '@/lib/constants/source-names';
@@ -6,11 +6,14 @@ import { normalizeSourceName } from '@/lib/constants/source-names';
 // Re-export for backward compatibility
 export { normalizeSourceName } from '@/lib/constants/source-names';
 
+// Type for cheerio loaded document
+type CheerioDoc = ReturnType<typeof cheerio.load>;
+
 export function extractContent(
   html: string,
   url: string
 ): ExtractedContent | null {
-  const $: CheerioAPI = load(html);
+  const $ = cheerio.load(html);
 
   // Extract headline - try multiple strategies
   const headline = extractHeadline($);
@@ -39,7 +42,7 @@ export function extractContent(
   };
 }
 
-function extractHeadline($: CheerioAPI): string | null {
+function extractHeadline($: CheerioDoc): string | null {
   // Try multiple headline selectors in order of priority
   const selectors = [
     'h1.headline',
@@ -74,7 +77,7 @@ function extractHeadline($: CheerioAPI): string | null {
   return null;
 }
 
-function extractMainContent($: CheerioAPI): string | null {
+function extractMainContent($: CheerioDoc): string | null {
   // Remove unwanted elements
   $(
     'script, style, nav, header, footer, aside, .advertisement, .ad, .social-share, .related-articles, .comments, .sidebar, [class*="newsletter"], [class*="subscribe"]'
@@ -133,7 +136,7 @@ function extractMainContent($: CheerioAPI): string | null {
   return allParagraphs.length > 200 ? cleanText(allParagraphs) : null;
 }
 
-function extractAuthor($: CheerioAPI): string | undefined {
+function extractAuthor($: CheerioDoc): string | undefined {
   const authorSelectors = [
     'meta[name="author"]',
     'meta[property="article:author"]',
@@ -163,7 +166,7 @@ function extractAuthor($: CheerioAPI): string | undefined {
   return undefined;
 }
 
-function extractPublishDate($: CheerioAPI): string | undefined {
+function extractPublishDate($: CheerioDoc): string | undefined {
   const dateSelectors = [
     'meta[property="article:published_time"]',
     'meta[name="publish-date"]',
@@ -218,7 +221,7 @@ function extractPublishDate($: CheerioAPI): string | undefined {
 
 
 function extractSourceName(
-  $: CheerioAPI,
+  $: CheerioDoc,
   url: string
 ): string {
   // Try meta tags first

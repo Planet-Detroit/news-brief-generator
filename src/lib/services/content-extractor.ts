@@ -1,4 +1,4 @@
-import * as cheerio from 'cheerio';
+import { load, type CheerioAPI } from 'cheerio';
 import type { ExtractedContent } from '@/types';
 import { getSourceName } from '@/lib/utils/url-parser';
 import { normalizeSourceName } from '@/lib/constants/source-names';
@@ -10,7 +10,7 @@ export function extractContent(
   html: string,
   url: string
 ): ExtractedContent | null {
-  const $ = cheerio.load(html);
+  const $: CheerioAPI = load(html);
 
   // Extract headline - try multiple strategies
   const headline = extractHeadline($);
@@ -39,7 +39,7 @@ export function extractContent(
   };
 }
 
-function extractHeadline($: cheerio.CheerioAPI): string | null {
+function extractHeadline($: CheerioAPI): string | null {
   // Try multiple headline selectors in order of priority
   const selectors = [
     'h1.headline',
@@ -74,7 +74,7 @@ function extractHeadline($: cheerio.CheerioAPI): string | null {
   return null;
 }
 
-function extractMainContent($: cheerio.CheerioAPI): string | null {
+function extractMainContent($: CheerioAPI): string | null {
   // Remove unwanted elements
   $(
     'script, style, nav, header, footer, aside, .advertisement, .ad, .social-share, .related-articles, .comments, .sidebar, [class*="newsletter"], [class*="subscribe"]'
@@ -133,7 +133,7 @@ function extractMainContent($: cheerio.CheerioAPI): string | null {
   return allParagraphs.length > 200 ? cleanText(allParagraphs) : null;
 }
 
-function extractAuthor($: cheerio.CheerioAPI): string | undefined {
+function extractAuthor($: CheerioAPI): string | undefined {
   const authorSelectors = [
     'meta[name="author"]',
     'meta[property="article:author"]',
@@ -163,7 +163,7 @@ function extractAuthor($: cheerio.CheerioAPI): string | undefined {
   return undefined;
 }
 
-function extractPublishDate($: cheerio.CheerioAPI): string | undefined {
+function extractPublishDate($: CheerioAPI): string | undefined {
   const dateSelectors = [
     'meta[property="article:published_time"]',
     'meta[name="publish-date"]',
@@ -218,7 +218,7 @@ function extractPublishDate($: cheerio.CheerioAPI): string | undefined {
 
 
 function extractSourceName(
-  $: cheerio.CheerioAPI,
+  $: CheerioAPI,
   url: string
 ): string {
   // Try meta tags first

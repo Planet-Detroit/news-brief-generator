@@ -156,6 +156,7 @@ export default function CurationPanel() {
   const [publishResult, setPublishResult] = useState<{
     success: boolean;
     postId?: number;
+    postUrl?: string;
     editUrl?: string;
     error?: string;
   } | null>(null);
@@ -563,7 +564,7 @@ export default function CurationPanel() {
         });
       }
 
-      setPublishResult({ success: true, postId, editUrl: postData.editUrl });
+      setPublishResult({ success: true, postId, postUrl: postData.postUrl, editUrl: postData.editUrl });
       setCurrentStep('publish');
 
     } catch (err) {
@@ -596,21 +597,30 @@ export default function CurationPanel() {
   };
 
   // Newsletter functions
-  const articlesToNewsletterText = (articles: Article[]): string => {
-    return articles.map(article => {
+  const articlesToNewsletterText = (articles: Article[], postUrl?: string): string => {
+    const articleText = articles.map(article => {
       return `${article.emoji} **${article.caption}** ${article.summary} 📍 ${article.sourceName}`;
     }).join('\n\n');
+
+    const learnMoreLink = postUrl || '[INSERT LINK]';
+    return `${articleText}\n\nLearn more: ${learnMoreLink}`;
   };
 
-  const articlesToNewsletterHtml = (articles: Article[]): string => {
-    return articles.map(article => {
+  const articlesToNewsletterHtml = (articles: Article[], postUrl?: string): string => {
+    const articleHtml = articles.map(article => {
       return `<p>${article.emoji} <strong>${article.caption}</strong> ${article.summary} 📍 ${article.sourceName}</p>`;
     }).join('\n');
+
+    const learnMoreLink = postUrl
+      ? `<a href="${postUrl}">Learn more</a>`
+      : 'Learn more: [INSERT LINK]';
+    return `${articleHtml}\n<p>${learnMoreLink}</p>`;
   };
 
   const handleCopyRichText = async () => {
-    const html = articlesToNewsletterHtml(articles);
-    const plainText = articlesToNewsletterText(articles);
+    const postUrl = publishResult?.postUrl;
+    const html = articlesToNewsletterHtml(articles, postUrl);
+    const plainText = articlesToNewsletterText(articles, postUrl);
 
     try {
       await navigator.clipboard.write([
@@ -628,7 +638,8 @@ export default function CurationPanel() {
   };
 
   const handleCopyHtml = async () => {
-    const html = articlesToNewsletterHtml(articles);
+    const postUrl = publishResult?.postUrl;
+    const html = articlesToNewsletterHtml(articles, postUrl);
     await navigator.clipboard.writeText(html);
     setCopySuccess('HTML copied!');
     setTimeout(() => setCopySuccess(null), 2000);
@@ -1175,14 +1186,24 @@ export default function CurationPanel() {
       {/* STEP: Newsletter (final step) */}
       {currentStep === 'newsletter' && (
         <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-          <p className="text-sm text-gray-600 mb-2 flex-shrink-0">Copy newsletter format for ActiveCampaign (no links):</p>
+          <p className="text-sm text-gray-600 mb-2 flex-shrink-0">Copy newsletter format for ActiveCampaign (no article links):</p>
 
           <div className="flex-1 overflow-y-auto mb-3 p-3 bg-white border border-gray-200 rounded-lg">
             {articles.map((article, idx) => (
-              <p key={article.id} className={`text-sm text-gray-800 ${idx < articles.length - 1 ? 'mb-3' : ''}`}>
+              <p key={article.id} className="text-sm text-gray-800 mb-3">
                 {article.emoji} <strong>{article.caption}</strong> {article.summary} 📍 {article.sourceName}
               </p>
             ))}
+            <p className="text-sm text-gray-800 mt-4 pt-3 border-t border-gray-100">
+              Learn more:{' '}
+              {publishResult?.postUrl ? (
+                <a href={publishResult.postUrl} target="_blank" rel="noopener noreferrer" className="text-[#2982c4] hover:underline">
+                  {publishResult.postUrl}
+                </a>
+              ) : (
+                <span className="text-gray-400">[INSERT LINK]</span>
+              )}
+            </p>
           </div>
 
           <div className="flex gap-2 mb-3 flex-shrink-0">

@@ -161,6 +161,13 @@ export default function CurationPanel() {
     error?: string;
   } | null>(null);
 
+  // Track where user came from when jumping to Newsletter out of sequence
+  const [previousStep, setPreviousStep] = useState<WorkflowStep | null>(null);
+
+  // Push to Newsletter Builder state
+  const [pushStatus, setPushStatus] = useState<'idle' | 'pushing' | 'success' | 'error'>('idle');
+  const [pushMessage, setPushMessage] = useState<string | null>(null);
+
   const editorRef = useRef<HTMLDivElement>(null);
 
   // DnD sensors
@@ -645,6 +652,35 @@ export default function CurationPanel() {
     setTimeout(() => setCopySuccess(null), 2000);
   };
 
+  const handlePushToNewsletter = async () => {
+    setPushStatus('pushing');
+    setPushMessage(null);
+    try {
+      const res = await fetch('/api/briefs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: title || `News brief — ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`,
+          postUrl: publishResult?.postUrl || null,
+          articles: articles.map(a => ({
+            emoji: a.emoji,
+            caption: a.caption,
+            summary: a.summary,
+            sourceName: a.sourceName,
+            url: a.url,
+          })),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to save');
+      setPushStatus('success');
+      setPushMessage(`Saved! The newsletter builder can now import "${data.brief.title}".`);
+    } catch (err) {
+      setPushStatus('error');
+      setPushMessage(err instanceof Error ? err.message : 'Failed to push');
+    }
+  };
+
   const proxyImageUrl = (url: string) => {
     return `/api/istock/proxy-image?url=${encodeURIComponent(url)}`;
   };
@@ -657,11 +693,21 @@ export default function CurationPanel() {
 
   // Navigation
   const goToStep = (step: WorkflowStep) => {
+    // Newsletter is always accessible once articles exist
+    if (step === 'newsletter' && articles.length > 0) {
+      if (currentStep !== 'newsletter') {
+        setPreviousStep(currentStep);
+      }
+      setCurrentStep(step);
+      return;
+    }
+
     const stepIndex = WORKFLOW_STEPS.findIndex(s => s.key === step);
     const currentIndex = WORKFLOW_STEPS.findIndex(s => s.key === currentStep);
 
     // Can only go back or to current step, not forward arbitrarily
     if (stepIndex <= currentIndex) {
+      setPreviousStep(null);
       setCurrentStep(step);
     }
   };
@@ -712,27 +758,34 @@ export default function CurationPanel() {
 
       {/* Step indicator */}
       <div className="flex items-center mb-4 overflow-x-auto flex-shrink-0 pb-2">
-        {WORKFLOW_STEPS.map((step, idx) => (
-          <div key={step.key} className="flex items-center">
-            <button
-              onClick={() => goToStep(step.key)}
-              disabled={idx > currentStepIndex}
-              className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-colors whitespace-nowrap ${
-                currentStep === step.key
-                  ? 'bg-[#2982c4] text-white'
-                  : idx < currentStepIndex
-                  ? 'bg-[#d4e9f5] text-[#2982c4] hover:bg-[#b3d4e8]'
-                  : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-              }`}
-            >
-              <span>{step.icon}</span>
-              <span className="hidden sm:inline">{step.label}</span>
-            </button>
-            {idx < WORKFLOW_STEPS.length - 1 && (
-              <div className={`w-4 h-0.5 mx-1 ${idx < currentStepIndex ? 'bg-[#7db8da]' : 'bg-gray-200'}`} />
-            )}
-          </div>
-        ))}
+        {WORKFLOW_STEPS.map((step, idx) => {
+          const isNewsletterAccessible = step.key === 'newsletter' && articles.length > 0;
+          const isDisabled = idx > currentStepIndex && !isNewsletterAccessible;
+
+          return (
+            <div key={step.key} className="flex items-center">
+              <button
+                onClick={() => goToStep(step.key)}
+                disabled={isDisabled}
+                className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-colors whitespace-nowrap ${
+                  currentStep === step.key
+                    ? 'bg-[#2982c4] text-white'
+                    : idx < currentStepIndex
+                    ? 'bg-[#d4e9f5] text-[#2982c4] hover:bg-[#b3d4e8]'
+                    : isNewsletterAccessible
+                    ? 'bg-[#fef3c7] text-[#92400e] hover:bg-[#fde68a] ring-1 ring-[#f59e0b]'
+                    : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                }`}
+              >
+                <span>{step.icon}</span>
+                <span className="hidden sm:inline">{step.label}</span>
+              </button>
+              {idx < WORKFLOW_STEPS.length - 1 && (
+                <div className={`w-4 h-0.5 mx-1 ${idx < currentStepIndex ? 'bg-[#7db8da]' : 'bg-gray-200'}`} />
+              )}
+            </div>
+          );
+        })}
       </div>
 
       {/* Error display */}
@@ -1183,10 +1236,18 @@ export default function CurationPanel() {
         </div>
       )}
 
-      {/* STEP: Newsletter (final step) */}
+      {/* STEP: Newsletter (accessible anytime once articles exist) */}
       {currentStep === 'newsletter' && (
         <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
           <p className="text-sm text-gray-600 mb-2 flex-shrink-0">Copy newsletter format for ActiveCampaign (no article links):</p>
+
+          {!publishResult?.postUrl && (
+            <div className="mb-2 p-2 bg-amber-50 border border-amber-200 rounded-lg flex-shrink-0">
+              <p className="text-xs text-amber-700">
+                The &quot;Learn more&quot; link will update automatically after you publish to WordPress.
+              </p>
+            </div>
+          )}
 
           <div className="flex-1 overflow-y-auto mb-3 p-3 bg-white border border-gray-200 rounded-lg">
             {articles.map((article, idx) => (
@@ -1206,7 +1267,7 @@ export default function CurationPanel() {
             </p>
           </div>
 
-          <div className="flex gap-2 mb-3 flex-shrink-0">
+          <div className="flex gap-2 mb-2 flex-shrink-0">
             <button
               onClick={handleCopyRichText}
               className="flex-1 px-3 py-2 bg-[#2982c4] text-white text-sm rounded-lg hover:bg-[#2371a8]"
@@ -1221,13 +1282,67 @@ export default function CurationPanel() {
             </button>
           </div>
 
+          <button
+            onClick={handlePushToNewsletter}
+            disabled={pushStatus === 'pushing'}
+            className={`w-full px-3 py-2 mb-3 text-sm font-medium rounded-lg flex-shrink-0 transition-colors ${
+              pushStatus === 'success'
+                ? 'bg-green-600 text-white'
+                : pushStatus === 'pushing'
+                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                : 'bg-amber-500 text-white hover:bg-amber-600'
+            }`}
+          >
+            {pushStatus === 'pushing' ? 'Saving...' : pushStatus === 'success' ? '✓ Saved to Newsletter Builder' : '📰 Push to Newsletter Builder'}
+          </button>
+          {pushMessage && (
+            <p className={`text-xs mb-3 flex-shrink-0 ${pushStatus === 'error' ? 'text-red-600' : 'text-green-700'}`}>
+              {pushMessage}
+            </p>
+          )}
+
           <div className="flex gap-2 flex-shrink-0 pt-2 border-t">
-            <button
-              onClick={handleStartOver}
-              className="flex-1 px-6 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700"
-            >
-              ✓ Done — Start New Curation
-            </button>
+            {previousStep ? (
+              <button
+                onClick={() => {
+                  setCurrentStep(previousStep);
+                  setPreviousStep(null);
+                }}
+                className="px-4 py-2 bg-gray-200 text-gray-700 text-sm rounded-lg hover:bg-gray-300"
+              >
+                ← Back to {WORKFLOW_STEPS.find(s => s.key === previousStep)?.label}
+              </button>
+            ) : (
+              <button
+                onClick={handleBack}
+                className="px-4 py-2 bg-gray-200 text-gray-700 text-sm rounded-lg hover:bg-gray-300"
+              >
+                ← Back
+              </button>
+            )}
+            {publishResult?.success ? (
+              <button
+                onClick={handleStartOver}
+                className="flex-1 px-6 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700"
+              >
+                ✓ Done — Start New Curation
+              </button>
+            ) : (
+              <button
+                onClick={() => {
+                  setPreviousStep(null);
+                  const pubIdx = WORKFLOW_STEPS.findIndex(s => s.key === 'publish');
+                  const curIdx = previousStep
+                    ? WORKFLOW_STEPS.findIndex(s => s.key === previousStep)
+                    : WORKFLOW_STEPS.findIndex(s => s.key === 'image');
+                  // Return to the furthest step they had reached, or continue workflow
+                  setCurrentStep(WORKFLOW_STEPS[Math.min(curIdx + 1, pubIdx)].key);
+                }}
+                className="flex-1 px-4 py-2 bg-[#2982c4] text-white text-sm font-medium rounded-lg hover:bg-[#2371a8]"
+              >
+                Continue Workflow →
+              </button>
+            )}
           </div>
         </div>
       )}

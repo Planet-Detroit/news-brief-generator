@@ -693,8 +693,8 @@ export default function CurationPanel() {
 
   // Navigation
   const goToStep = (step: WorkflowStep) => {
-    // Newsletter is always accessible once articles exist
-    if (step === 'newsletter' && articles.length > 0) {
+    // Newsletter is always accessible
+    if (step === 'newsletter') {
       if (currentStep !== 'newsletter') {
         setPreviousStep(currentStep);
       }
@@ -759,8 +759,8 @@ export default function CurationPanel() {
       {/* Step indicator */}
       <div className="flex items-center mb-4 overflow-x-auto flex-shrink-0 pb-2">
         {WORKFLOW_STEPS.map((step, idx) => {
-          const isNewsletterAccessible = step.key === 'newsletter' && articles.length > 0;
-          const isDisabled = idx > currentStepIndex && !isNewsletterAccessible;
+          const isNewsletter = step.key === 'newsletter';
+          const isDisabled = idx > currentStepIndex && !isNewsletter;
 
           return (
             <div key={step.key} className="flex items-center">
@@ -772,7 +772,7 @@ export default function CurationPanel() {
                     ? 'bg-[#2982c4] text-white'
                     : idx < currentStepIndex
                     ? 'bg-[#d4e9f5] text-[#2982c4] hover:bg-[#b3d4e8]'
-                    : isNewsletterAccessible
+                    : isNewsletter
                     ? 'bg-[#fef3c7] text-[#92400e] hover:bg-[#fde68a] ring-1 ring-[#f59e0b]'
                     : 'bg-gray-100 text-gray-400 cursor-not-allowed'
                 }`}

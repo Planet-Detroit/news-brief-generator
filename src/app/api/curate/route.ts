@@ -4,6 +4,7 @@ import {
   WEEKLY_CURATION_SYSTEM_PROMPT,
   buildCurationPrompt,
 } from '@/lib/constants/prompts';
+import { getEnv } from '@/lib/env';
 
 export interface CurationRequest {
   mode: 'search' | 'curate';
@@ -29,7 +30,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<CurationR
     const { mode, articles } = body;
 
     // Get API key from environment or request
-    const apiKey = process.env.ANTHROPIC_API_KEY;
+    const apiKey = getEnv().ANTHROPIC_API_KEY;
 
     if (!apiKey) {
       return NextResponse.json({

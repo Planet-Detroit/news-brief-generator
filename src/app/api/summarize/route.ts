@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { summarizeArticles } from '@/lib/services/summarizer';
+import { getEnv } from '@/lib/env';
 import type { SummarizeRequest, SummarizeResponse } from '@/types';
 
 export async function POST(request: NextRequest) {
@@ -8,7 +9,7 @@ export async function POST(request: NextRequest) {
     const { articles, apiKey } = body;
 
     // Use provided API key or fall back to environment variable
-    const effectiveApiKey = apiKey || process.env.ANTHROPIC_API_KEY;
+    const effectiveApiKey = apiKey || getEnv().ANTHROPIC_API_KEY;
 
     if (!effectiveApiKey) {
       return NextResponse.json(

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
+import { getEnv } from '@/lib/env';
 
 interface SuggestTitleRequest {
   articles: Array<{
@@ -20,7 +21,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<SuggestTi
     const body = await request.json() as SuggestTitleRequest;
     const { articles } = body;
 
-    const apiKey = process.env.ANTHROPIC_API_KEY;
+    const apiKey = getEnv().ANTHROPIC_API_KEY;
     if (!apiKey) {
       return NextResponse.json({
         success: false,

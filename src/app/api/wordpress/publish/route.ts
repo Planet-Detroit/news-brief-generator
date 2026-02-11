@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getEnv } from '@/lib/env';
 
 interface PublishRequest {
   title: string;
@@ -23,9 +24,10 @@ export async function POST(request: NextRequest): Promise<NextResponse<PublishRe
     const { title, content, excerpt, status = 'draft', categories, tags } = body;
 
     // Get WordPress credentials from environment
-    const wpUrl = process.env.WORDPRESS_URL;
-    const wpUsername = process.env.WORDPRESS_USERNAME;
-    const wpAppPassword = process.env.WORDPRESS_APP_PASSWORD;
+    const env = getEnv();
+    const wpUrl = env.WORDPRESS_URL;
+    const wpUsername = env.WORDPRESS_USERNAME;
+    const wpAppPassword = env.WORDPRESS_APP_PASSWORD;
 
     if (!wpUrl || !wpUsername || !wpAppPassword) {
       return NextResponse.json({

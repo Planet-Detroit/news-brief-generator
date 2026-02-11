@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getEnv } from '@/lib/env';
 
 interface UpdateSEORequest {
   postId: number;
@@ -18,9 +19,10 @@ export async function POST(request: NextRequest): Promise<NextResponse<UpdateSEO
     const body = await request.json() as UpdateSEORequest;
     const { postId, title, seoTitle, metaDescription, excerpt } = body;
 
-    const wpUrl = process.env.WORDPRESS_URL;
-    const wpUsername = process.env.WORDPRESS_USERNAME;
-    const wpPassword = process.env.WORDPRESS_APP_PASSWORD;
+    const env = getEnv();
+    const wpUrl = env.WORDPRESS_URL;
+    const wpUsername = env.WORDPRESS_USERNAME;
+    const wpPassword = env.WORDPRESS_APP_PASSWORD;
 
     if (!wpUrl || !wpUsername || !wpPassword) {
       return NextResponse.json({

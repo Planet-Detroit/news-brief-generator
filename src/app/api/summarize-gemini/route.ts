@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { getEnv } from '@/lib/env';
 
 interface SummarizeRequest {
   url: string;
@@ -50,7 +51,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<Summarize
     const body = await request.json() as SummarizeRequest;
     const { url, headline, content, sourceName } = body;
 
-    const apiKey = process.env.GEMINI_API_KEY;
+    const apiKey = getEnv().GEMINI_API_KEY;
 
     if (!apiKey) {
       return NextResponse.json({

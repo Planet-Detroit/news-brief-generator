@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getEnv } from '@/lib/env';
 
 interface SearchRequest {
   query: string;
@@ -70,9 +69,8 @@ export async function POST(request: NextRequest): Promise<NextResponse<SearchRes
     const body = await request.json() as SearchRequest;
     const { query, page = 1 } = body;
 
-    const env = getEnv();
-    const apiKey = env.GETTY_API_KEY;
-    const apiSecret = env.GETTY_API_SECRET;
+    const apiKey = process.env.GETTY_API_KEY;
+    const apiSecret = process.env.GETTY_API_SECRET;
 
     if (!apiKey || !apiSecret) {
       return NextResponse.json({

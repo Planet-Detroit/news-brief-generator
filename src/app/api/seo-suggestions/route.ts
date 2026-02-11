@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { getEnv } from '@/lib/env';
 
 interface Article {
   emoji: string;
@@ -67,7 +66,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<SEORespon
     const body = await request.json() as SEORequest;
     const { articles, currentTitle } = body;
 
-    const apiKey = getEnv().GEMINI_API_KEY;
+    const apiKey = process.env.GEMINI_API_KEY;
 
     if (!apiKey) {
       return NextResponse.json({

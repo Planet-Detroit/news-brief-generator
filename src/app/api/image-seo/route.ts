@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { getEnv } from '@/lib/env';
 
 interface ImageSEORequest {
   imageTitle: string;
@@ -37,7 +36,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<ImageSEOR
     const body = await request.json() as ImageSEORequest;
     const { imageTitle, articleTopics, postTitle } = body;
 
-    const apiKey = getEnv().GEMINI_API_KEY;
+    const apiKey = process.env.GEMINI_API_KEY;
 
     if (!apiKey) {
       return NextResponse.json({

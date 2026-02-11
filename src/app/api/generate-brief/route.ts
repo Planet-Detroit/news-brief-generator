@@ -5,7 +5,6 @@ import { summarizeArticles, type ArticleForSummary } from '@/lib/services/summar
 import { generateBrief } from '@/lib/services/html-formatter';
 import { validateUrl, getSourceName, isPaywalledSource } from '@/lib/utils/url-parser';
 import { fetchWithBrowser, isBrowserAutomationAvailable } from '@/lib/services/browser-automation';
-import { getEnv } from '@/lib/env';
 import type { ArticleInput, GenerateBriefResponse, SummarizedArticle } from '@/types';
 
 interface GenerateBriefRequestBody {
@@ -19,7 +18,7 @@ export async function POST(request: NextRequest) {
     const { articles, apiKey } = body;
 
     // Use provided API key or fall back to environment variable
-    const effectiveApiKey = apiKey || getEnv().ANTHROPIC_API_KEY;
+    const effectiveApiKey = apiKey || process.env.ANTHROPIC_API_KEY;
 
     if (!effectiveApiKey) {
       return NextResponse.json(

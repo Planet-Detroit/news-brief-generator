@@ -34,6 +34,7 @@ interface IStockImage {
   title: string;
   thumbUrl: string;
   previewUrl: string;
+  artist?: string;
 }
 
 interface SEOSuggestion {
@@ -121,16 +122,9 @@ export default function CurationPanel() {
   const [currentStep, setCurrentStep] = useState<WorkflowStep>('paste');
   const [title, setTitle] = useState('');
   const [articles, setArticles] = useState<Article[]>([]);
-  const [newUrl, setNewUrl] = useState('');
-  const [isSummarizing, setIsSummarizing] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copySuccess, setCopySuccess] = useState<string | null>(null);
-
-  // Manual paste mode
-  const [showManualPaste, setShowManualPaste] = useState(false);
-  const [manualSource, setManualSource] = useState('');
-  const [manualContent, setManualContent] = useState('');
 
   // SEO state
   const [seoSuggestions, setSeoSuggestions] = useState<SEOSuggestion[]>([]);
@@ -151,6 +145,12 @@ export default function CurationPanel() {
     description: string;
   } | null>(null);
   const [isGeneratingImageSeo, setIsGeneratingImageSeo] = useState(false);
+  const [photographerName, setPhotographerName] = useState('');
+
+  // Author picker state
+  const [wpUsers, setWpUsers] = useState<{ id: number; name: string; slug: string }[]>([]);
+  const [selectedAuthorId, setSelectedAuthorId] = useState<number | null>(null);
+  const [isLoadingUsers, setIsLoadingUsers] = useState(false);
 
   // Publish result
   const [publishResult, setPublishResult] = useState<{
@@ -183,10 +183,22 @@ export default function CurationPanel() {
     }
   }, [currentStep]);
 
-  // Generate image SEO when image is selected
+  // Fetch WP users when entering SEO step
   useEffect(() => {
-    if (selectedImage && !imageSeo && !isGeneratingImageSeo) {
-      generateImageSeo(selectedImage);
+    if (currentStep === 'seo' && wpUsers.length === 0 && !isLoadingUsers) {
+      fetchWpUsers();
+    }
+  }, [currentStep]);
+
+  // Generate image SEO and set photographer when image is selected
+  useEffect(() => {
+    if (selectedImage) {
+      if (!imageSeo && !isGeneratingImageSeo) {
+        generateImageSeo(selectedImage);
+      }
+      if (selectedImage.artist) {
+        setPhotographerName(selectedImage.artist);
+      }
     }
   }, [selectedImage]);
 
@@ -226,6 +238,21 @@ export default function CurationPanel() {
       setError('Failed to fetch SEO suggestions');
     } finally {
       setIsLoadingSeo(false);
+    }
+  };
+
+  const fetchWpUsers = async () => {
+    setIsLoadingUsers(true);
+    try {
+      const response = await fetch('/api/wordpress/users');
+      const data = await response.json();
+      if (data.success) {
+        setWpUsers(data.users || []);
+      }
+    } catch (err) {
+      // Non-critical — user can still publish without selecting an author
+    } finally {
+      setIsLoadingUsers(false);
     }
   };
 
@@ -285,9 +312,16 @@ export default function CurationPanel() {
       .trim();
   };
 
+  // Clean URL by removing trailing punctuation and whitespace
+  const cleanUrl = (url: string): string => {
+    return url.trim().replace(/[),.\]}>]+$/, '');
+  };
+
   // Parse Gemini output
   const parseGeminiOutput = (rawText: string): Article[] => {
-    const lines = rawText.split(/\n+/).filter(line => {
+    // Strip any HTML tags that browsers may inject in contentEditable
+    const plainText = rawText.replace(/<[^>]*>/g, '');
+    const lines = plainText.split(/\n+/).filter(line => {
       const trimmed = line.trim();
       return trimmed.length > 0 &&
              !trimmed.match(/^VERSION\s*\d/i) &&
@@ -308,7 +342,7 @@ export default function CurationPanel() {
           caption: cleanText(match[2]),
           summary: cleanText(match[3]),
           sourceName: cleanText(match[4]),
-          url: match[5].trim(),
+          url: cleanUrl(match[5]),
         });
         continue;
       }
@@ -319,7 +353,7 @@ export default function CurationPanel() {
         const emoji = match[1].trim();
         const textBeforeSource = cleanText(match[2]);
         const sourceName = cleanText(match[3]);
-        const url = match[4].trim();
+        const url = cleanUrl(match[4]);
 
         const words = textBeforeSource.split(/\s+/);
         let caption = '';
@@ -351,7 +385,9 @@ export default function CurationPanel() {
 
   const handleProceedToReview = () => {
     if (!editorRef.current) return;
-    const text = editorRef.current.innerText;
+    // Use innerHTML so we can extract href URLs from any auto-linked text,
+    // then parseGeminiOutput strips all tags before regex matching
+    const text = editorRef.current.innerText || editorRef.current.textContent || '';
     const parsed = parseGeminiOutput(text);
 
     if (parsed.length === 0) {
@@ -366,105 +402,6 @@ export default function CurationPanel() {
 
   const handleDeleteArticle = (id: string) => {
     setArticles(prev => prev.filter(a => a.id !== id));
-  };
-
-  const handleAddUrl = async () => {
-    if (!newUrl.trim()) return;
-
-    setIsSummarizing(true);
-    setError(null);
-
-    try {
-      const fetchResponse = await fetch('/api/fetch-article', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: newUrl.trim() }),
-      });
-
-      const fetchResult = await fetchResponse.json();
-
-      if (!fetchResult.success) {
-        throw new Error(fetchResult.error?.message || 'Failed to fetch article');
-      }
-
-      const articleData = fetchResult.data || {};
-
-      const summarizeResponse = await fetch('/api/summarize-gemini', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          url: newUrl.trim(),
-          headline: articleData.headline || articleData.title || '',
-          content: articleData.content || articleData.text || '',
-          sourceName: articleData.sourceName || new URL(newUrl.trim()).hostname.replace('www.', ''),
-        }),
-      });
-
-      const summarizeData = await summarizeResponse.json();
-
-      if (!summarizeData.success) {
-        throw new Error(summarizeData.error || 'Failed to summarize article');
-      }
-
-      setArticles(prev => [...prev, {
-        id: crypto.randomUUID(),
-        emoji: summarizeData.emoji || '📰',
-        caption: summarizeData.caption || 'News update',
-        summary: summarizeData.summary || '',
-        sourceName: summarizeData.sourceName || articleData.sourceName || new URL(newUrl.trim()).hostname.replace('www.', ''),
-        url: newUrl.trim(),
-      }]);
-
-      setNewUrl('');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to add article');
-    } finally {
-      setIsSummarizing(false);
-    }
-  };
-
-  const handleAddManual = async () => {
-    if (!manualContent.trim()) return;
-
-    setIsSummarizing(true);
-    setError(null);
-
-    try {
-      const summarizeResponse = await fetch('/api/summarize-gemini', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          url: newUrl.trim() || '#',
-          headline: '',
-          content: manualContent.trim(),
-          sourceName: manualSource.trim() || 'Source',
-        }),
-      });
-
-      const summarizeData = await summarizeResponse.json();
-
-      if (!summarizeData.success) {
-        throw new Error(summarizeData.error || 'Failed to summarize article');
-      }
-
-      setArticles(prev => [...prev, {
-        id: crypto.randomUUID(),
-        emoji: summarizeData.emoji || '📰',
-        caption: summarizeData.caption || 'News update',
-        summary: summarizeData.summary || '',
-        sourceName: manualSource.trim() || summarizeData.sourceName || 'Source',
-        url: newUrl.trim() || '#',
-      }]);
-
-      setNewUrl('');
-      setManualSource('');
-      setManualContent('');
-      setShowManualPaste(false);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to add article');
-    } finally {
-      setIsSummarizing(false);
-    }
   };
 
   // Search iStock
@@ -527,6 +464,7 @@ export default function CurationPanel() {
           content: htmlContent,
           status: 'draft',
           excerpt: subtitle, // This sets the subtitle via multiple meta fields
+          ...(selectedAuthorId && { author: selectedAuthorId }),
         }),
       });
 
@@ -555,6 +493,9 @@ export default function CurationPanel() {
 
       // Step 3: Upload featured image if selected
       if (selectedImage) {
+        const photoCredit = photographerName.trim()
+          ? `${photographerName.trim()}/iStock`
+          : imageSeo?.caption || 'Image via Getty Images';
         await fetch('/api/istock/upload-to-wordpress', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -564,7 +505,7 @@ export default function CurationPanel() {
             title: selectedImage.title,
             postId,
             altText: imageSeo?.altText || selectedImage.title,
-            caption: imageSeo?.caption || 'Image via Getty Images',
+            caption: photoCredit,
             description: imageSeo?.description || '',
             imageSize: 'large', // Request large size for featured image
           }),
@@ -597,6 +538,8 @@ export default function CurationPanel() {
     setCustomHeadline('');
     setCustomMetaDesc('');
     setImageSeo(null);
+    setPhotographerName('');
+    setSelectedAuthorId(null);
     setTitle('');
     if (editorRef.current) {
       editorRef.current.innerHTML = '';
@@ -873,71 +816,6 @@ export default function CurationPanel() {
               </SortableContext>
             </DndContext>
 
-            {/* Add new URL */}
-            <div className="p-3 bg-gray-50 border border-dashed border-gray-300 rounded-lg">
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-sm font-medium text-gray-700">Add another article</p>
-                <button
-                  onClick={() => setShowManualPaste(!showManualPaste)}
-                  className="text-xs text-blue-600 hover:text-blue-800"
-                >
-                  {showManualPaste ? '← Back to URL' : 'Paywalled? →'}
-                </button>
-              </div>
-
-              {!showManualPaste ? (
-                <div className="flex gap-2">
-                  <input
-                    type="url"
-                    value={newUrl}
-                    onChange={(e) => setNewUrl(e.target.value)}
-                    placeholder="Paste URL..."
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder:text-gray-400"
-                    disabled={isSummarizing}
-                  />
-                  <button
-                    onClick={handleAddUrl}
-                    disabled={!newUrl.trim() || isSummarizing}
-                    className="px-3 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 disabled:opacity-50"
-                  >
-                    {isSummarizing ? '...' : '+ Add'}
-                  </button>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={manualSource}
-                      onChange={(e) => setManualSource(e.target.value)}
-                      placeholder="Source name"
-                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder:text-gray-400"
-                    />
-                    <input
-                      type="url"
-                      value={newUrl}
-                      onChange={(e) => setNewUrl(e.target.value)}
-                      placeholder="URL (optional)"
-                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder:text-gray-400"
-                    />
-                  </div>
-                  <textarea
-                    value={manualContent}
-                    onChange={(e) => setManualContent(e.target.value)}
-                    placeholder="Paste article text..."
-                    rows={4}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder:text-gray-400 resize-none"
-                  />
-                  <button
-                    onClick={handleAddManual}
-                    disabled={!manualContent.trim() || isSummarizing}
-                    className="w-full px-3 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 disabled:opacity-50"
-                  >
-                    {isSummarizing ? 'Summarizing...' : '+ Add & Summarize'}
-                  </button>
-                </div>
-              )}
-            </div>
           </div>
 
           <div className="flex gap-2 flex-shrink-0">
@@ -1016,6 +894,28 @@ export default function CurationPanel() {
                   }`}
                   placeholder="Enter meta description..."
                 />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">
+                  Post Author
+                </label>
+                {isLoadingUsers ? (
+                  <p className="text-xs text-gray-500">Loading authors...</p>
+                ) : wpUsers.length > 0 ? (
+                  <select
+                    value={selectedAuthorId ?? ''}
+                    onChange={(e) => setSelectedAuthorId(e.target.value ? Number(e.target.value) : null)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#2982c4] bg-white"
+                  >
+                    <option value="">Default (authenticated user)</option>
+                    {wpUsers.map((user) => (
+                      <option key={user.id} value={user.id}>{user.name}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <p className="text-xs text-gray-500">Could not load authors</p>
+                )}
               </div>
             </div>
           )}
@@ -1121,6 +1021,19 @@ export default function CurationPanel() {
                         onChange={(e) => setImageSeo({ ...imageSeo, caption: e.target.value })}
                         className="w-full px-2 py-1 border border-gray-300 rounded text-xs text-gray-900"
                       />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Photographer Name</label>
+                      <input
+                        type="text"
+                        value={photographerName}
+                        onChange={(e) => setPhotographerName(e.target.value)}
+                        placeholder="e.g. John Smith"
+                        className="w-full px-2 py-1 border border-gray-300 rounded text-xs text-gray-900 placeholder:text-gray-400"
+                      />
+                      {photographerName && (
+                        <p className="text-xs text-gray-500 mt-1">Credit: {photographerName}/iStock</p>
+                      )}
                     </div>
                   </div>
                 )}

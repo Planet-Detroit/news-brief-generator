@@ -21,6 +21,7 @@ interface SearchResponse {
     title: string;
     thumbUrl: string;
     previewUrl: string;
+    artist?: string;
   }>;
   totalCount?: number;
   error?: string;
@@ -95,7 +96,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<SearchRes
       phrase: query,
       page: page.toString(),
       page_size: '20',
-      fields: 'id,title,thumb,preview,display_sizes',
+      fields: 'id,title,thumb,preview,display_sizes,artist',
       sort_order: 'best_match',
     });
 
@@ -161,6 +162,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<SearchRes
         title: img.title,
         thumbUrl,
         previewUrl: previewUrl || thumbUrl,
+        artist: img.artist || '',
       };
     });
 

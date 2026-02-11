@@ -7,6 +7,7 @@ interface PublishRequest {
   status: 'draft' | 'publish';
   categories?: number[];
   tags?: number[];
+  author?: number; // WordPress user ID
 }
 
 interface PublishResponse {
@@ -20,7 +21,7 @@ interface PublishResponse {
 export async function POST(request: NextRequest): Promise<NextResponse<PublishResponse>> {
   try {
     const body = await request.json() as PublishRequest;
-    const { title, content, excerpt, status = 'draft', categories, tags } = body;
+    const { title, content, excerpt, status = 'draft', categories, tags, author } = body;
 
     // Get WordPress credentials from environment
     const wpUrl = process.env.WORDPRESS_URL;
@@ -72,6 +73,10 @@ export async function POST(request: NextRequest): Promise<NextResponse<PublishRe
 
     if (tags && tags.length > 0) {
       postData.tags = tags;
+    }
+
+    if (author) {
+      postData.author = author;
     }
 
     const response = await fetch(apiUrl, {

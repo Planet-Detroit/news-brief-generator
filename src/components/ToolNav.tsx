@@ -14,7 +14,7 @@ export default function ToolNav() {
   };
 
   return (
-    <nav style={{ background: "#1e293b", padding: "0 16px", display: "flex", alignItems: "center", justifyContent: "center", gap: "4px", height: "32px", fontFamily: "Arial, Helvetica, sans-serif" }}>
+    <nav style={{ background: "#1e293b", padding: "0 16px", display: "flex", alignItems: "center", gap: "4px", height: "32px", fontFamily: "Arial, Helvetica, sans-serif" }}>
       <span style={{ fontSize: "11px", color: "#94a3b8", letterSpacing: "0.5px", marginRight: "12px", textTransform: "uppercase", fontWeight: "bold" }}>
         PD Tools
       </span>

@@ -32,6 +32,15 @@ export default function ToolNav() {
       >
         Newsletter Builder
       </a>
+      <span style={{ color: "#475569", fontSize: "10px" }}>/</span>
+      <a
+        href="https://civic-action-builder.vercel.app/"
+        style={{ fontSize: "12px", color: "#94a3b8", textDecoration: "none", padding: "4px 10px", borderRadius: "4px", transition: "color 0.15s" }}
+        onMouseEnter={(e) => (e.currentTarget.style.color = "#ffffff")}
+        onMouseLeave={(e) => (e.currentTarget.style.color = "#94a3b8")}
+      >
+        Civic Action
+      </a>
       <button
         onClick={handleLogout}
         style={{ fontSize: "11px", color: "#94a3b8", background: "none", border: "none", cursor: "pointer", marginLeft: "auto", padding: "4px 8px", transition: "color 0.15s" }}

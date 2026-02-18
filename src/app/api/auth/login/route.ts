@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { signToken } from "@/lib/auth";
 
+const COOKIE_DOMAIN = ".tools.planetdetroit.org";
+
 export async function POST(request: NextRequest) {
   try {
     const { password, userId } = await request.json();
@@ -31,6 +33,7 @@ export async function POST(request: NextRequest) {
       sameSite: "lax",
       maxAge: 7 * 24 * 60 * 60, // 7 days
       path: "/",
+      domain: COOKIE_DOMAIN,
     });
 
     // Store userId in a non-httpOnly cookie so the client can read it
@@ -41,6 +44,7 @@ export async function POST(request: NextRequest) {
         sameSite: "lax",
         maxAge: 7 * 24 * 60 * 60, // 7 days
         path: "/",
+        domain: COOKIE_DOMAIN,
       });
     }
 

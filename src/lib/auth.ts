@@ -1,4 +1,4 @@
-const AUTH_PAYLOAD = "pd-newsbriefs-auth";
+const AUTH_PAYLOAD = "pd-tools-auth";
 
 /**
  * Generate a signed auth token using HMAC-SHA256.

@@ -753,13 +753,13 @@ export default function CurationPanel() {
               First, generate your curated news list:
             </p>
             <a
-              href="https://gemini.google.com/gem/1k53wHUaIr5cMHEpNkwaX_GwbNblNEacs?usp=sharing"
+              href="https://claude.ai"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 px-4 py-2 bg-[#2982c4] text-white text-sm font-medium rounded-lg hover:bg-[#2371a8] transition-colors"
             >
               <span>✨</span>
-              Open Planet Detroit News Curator Gem
+              Open Claude
               <span>→</span>
             </a>
           </div>

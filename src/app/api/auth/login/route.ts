@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { signToken } from "@/lib/auth";
 
 const COOKIE_DOMAIN = ".tools.planetdetroit.org";
+const isProduction = process.env.NODE_ENV === "production";
 
 export async function POST(request: NextRequest) {
   try {
@@ -29,22 +30,22 @@ export async function POST(request: NextRequest) {
     const response = NextResponse.json({ success: true });
     response.cookies.set("pd_auth", token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: isProduction,
       sameSite: "lax",
       maxAge: 7 * 24 * 60 * 60, // 7 days
       path: "/",
-      domain: COOKIE_DOMAIN,
+      ...(isProduction && { domain: COOKIE_DOMAIN }),
     });
 
     // Store userId in a non-httpOnly cookie so the client can read it
     if (userId) {
       response.cookies.set("pd_user", userId, {
         httpOnly: false,
-        secure: process.env.NODE_ENV === "production",
+        secure: isProduction,
         sameSite: "lax",
         maxAge: 7 * 24 * 60 * 60, // 7 days
         path: "/",
-        domain: COOKIE_DOMAIN,
+        ...(isProduction && { domain: COOKIE_DOMAIN }),
       });
     }
 

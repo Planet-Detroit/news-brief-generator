@@ -41,6 +41,15 @@ export default function ToolNav() {
       >
         Civic Action
       </a>
+      <span style={{ color: "#475569", fontSize: "10px" }}>/</span>
+      <a
+        href="https://events.tools.planetdetroit.org/"
+        style={{ fontSize: "12px", color: "#94a3b8", textDecoration: "none", padding: "4px 10px", borderRadius: "4px", transition: "color 0.15s" }}
+        onMouseEnter={(e) => (e.currentTarget.style.color = "#ffffff")}
+        onMouseLeave={(e) => (e.currentTarget.style.color = "#94a3b8")}
+      >
+        Events
+      </a>
       <button
         onClick={handleLogout}
         style={{ fontSize: "11px", color: "#94a3b8", background: "none", border: "none", cursor: "pointer", marginLeft: "auto", padding: "4px 8px", transition: "color 0.15s" }}
